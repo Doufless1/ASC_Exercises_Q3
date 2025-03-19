@@ -1,0 +1,17 @@
+# Ignore PlatformIO build files
+.pio/
+build/
+libdeps/
+.vscode/
+*.elf
+*.bin
+*.hex
+*.map
+
+# Ignore Python virtual environment (if using one)
+.venv/
+venv/
+
+# Ignore PlatformIO core files
+platformio.ini.bak
+
