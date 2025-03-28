@@ -5,14 +5,14 @@ volatile bool Button::buttonPressed = false;
 volatile unsigned long Button::lastPressTime = 0;
 
 Button::Button() {
-  // Constructor
+  
 }
 
 void Button::initialize() {
-  // Set up the button pin
+  
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   
-  // Attach interrupt
+  // attach interrupt
   attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonISR, FALLING);
 }
 

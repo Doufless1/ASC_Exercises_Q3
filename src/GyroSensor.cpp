@@ -9,7 +9,7 @@ GyroSensor::GyroSensor() {
 }
 
 bool GyroSensor::initialize() {
-  // initialize I2C
+  
   Wire.begin(SDA_PIN, SCL_PIN);
   
   

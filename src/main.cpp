@@ -20,7 +20,6 @@ void setup() {
   
 
   
-  // initialize LED
   pinMode(LED_PIN, OUTPUT);
   
   // visual startup sequence - triple blink
@@ -31,7 +30,6 @@ void setup() {
     delay(200);
   }
   
-  // initialize sensor
   Serial.println("Initializing MPU6050 sensor...");
   if (!gyroSensor.initialize()) {
     Serial.println("Failed to initialize MPU6050!");

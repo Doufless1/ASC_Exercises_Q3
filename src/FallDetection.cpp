@@ -7,46 +7,69 @@ FallDetection::FallDetection(GyroSensor &sensor) : gyroSensor(sensor) {
 }
 
 bool FallDetection::detectFall() {
-  // Step 1: Check for free-fall conditions
-  // Free-fall is characterized by near-zero acceleration
-  // Accelerometers don't measure absolute movement - they measure the force acting on a small mass inside the sensor. When falling:
-//  `Gravity is pulling everything (both the sensor and its internal test mass) at the same rate
-//  The test mass inside the accelerometer isn't pressing against any surface
-//  With no differential force, the accelerometer reads close to zero
-  bool freeFallDetected = false;
-  auto &accelBuffer = gyroSensor.getAccelBuffer();
+  static bool inFreeFall = false;
+  static unsigned long freeFallStartTime = 0;
+  static unsigned long lastDebugTime = 0;
+  static float minAccel = 100.0;
+  static float maxAccel = 0.0;
+  static unsigned long lastResetTime = 0;
+  float accelMagnitude, gyroMagnitude;  
   
-  for (int i = 0; i < accelBuffer.size(); i++) {
-    if (accelBuffer[i] < FREEFALL_THRESHOLD) {
-      freeFallDetected = true;
-      break;
+  
+  gyroSensor.getAccelGyroData(accelMagnitude, gyroMagnitude);
+
+  
+  // reset min/max values every 3 seconds
+  if (millis() - lastResetTime > 3000) {
+    minAccel = 100.0;
+    maxAccel = 0.0;
+    lastResetTime = millis();
+  }
+  
+  // track min/max values for debugging
+  if (accelMagnitude < minAccel) minAccel = accelMagnitude;
+  if (accelMagnitude > maxAccel) maxAccel = accelMagnitude;
+  
+  // debug output
+  if (millis() - lastDebugTime > 500) {
+    lastDebugTime = millis();
+    Serial.printf("Fall Detection Debug | Current: %.2f | Min: %.2f | Max: %.2f | FF Threshold: %.2f | Impact Threshold: %.2f | State: %s\n", 
+                 accelMagnitude, 
+                 minAccel, 
+                 maxAccel, 
+                 FREEFALL_THRESHOLD, 
+                 IMPACT_THRESHOLD,
+                 inFreeFall ? "IN FREE-FALL" : "normal");
+  }
+  
+  // If not in free-fall, check for free-fall condition
+  if (!inFreeFall) {
+    if (accelMagnitude < FREEFALL_THRESHOLD) {
+      inFreeFall = true;
+      freeFallStartTime = millis();
+      Serial.printf("\n!!! FREE-FALL DETECTED !!! Acceleration: %.2f m/s²\n", accelMagnitude);
+      digitalWrite(LED_PIN, HIGH);
+      delay(50);
+      digitalWrite(LED_PIN, LOW);
     }
   }
-  
-  if (!freeFallDetected) {
-    return false;
-  }
-  
-  // Step 2: Look for impact after free-fall
-  unsigned long impactCheckStart = millis();
-  bool impactDetected = false;
-  
-  // Monitor for impact for up to 1000ms after detecting free-fall
-  while (millis() - impactCheckStart < 1000 && !impactDetected) {
-    float accelMagnitude, gyroMagnitude;
-    gyroSensor.process();
-    gyroSensor.getAccelGyroData(accelMagnitude, gyroMagnitude);
-    
+  // If in free-fall, check for impact or timeout
+  else {
     if (accelMagnitude > IMPACT_THRESHOLD) {
-      impactDetected = true;
-      Serial.printf("Impact detected: %.2f m/s²\n", accelMagnitude);
-      break;
+      Serial.printf("\n!!! IMPACT DETECTED !!! Acceleration: %.2f m/s²\n", accelMagnitude);
+      Serial.println("FALL SEQUENCE COMPLETE - DETECTED BOTH FREE-FALL AND IMPACT");
+      inFreeFall = false; // Reset for next detection
+      return true;
     }
     
-    delay(5);
+    // check for timeout (free-fall window expired)
+    if (millis() - freeFallStartTime > 1000) {
+      Serial.println("Free-fall timeout - no impact detected within time window");
+      inFreeFall = false;
+    }
   }
   
-  return impactDetected;
+  return false;
 }
 
 bool FallDetection::detectInactivityAfterImpact() {
@@ -54,52 +77,63 @@ bool FallDetection::detectInactivityAfterImpact() {
   
   unsigned long startTime = millis();
   int consecutiveStillSamples = 0;
+  int totalSamples = 0;
   
-  // Check for a period of stillness (medical emergency sign)
+  // check for a period of stillness (medical emergency sign)
   while (millis() - startTime < POST_IMPACT_WINDOW_MS) {
     float accelMagnitude, gyroMagnitude;
     gyroSensor.process();
     gyroSensor.getAccelGyroData(accelMagnitude, gyroMagnitude);
+    totalSamples++;
     
-    // Calculate dynamic acceleration (removing gravity component)
+    // calculate dynamic acceleration (removing gravity component)
     float dynamicAccel = abs(accelMagnitude - 9.8); // Remove gravity magnitude
     
     if (dynamicAccel < INACTIVITY_THRESHOLD) {
       consecutiveStillSamples++;
+      if (consecutiveStillSamples % 10 == 0) {
+        Serial.printf("Still samples: %d/%d\n", consecutiveStillSamples, REQUIRED_STILL_SAMPLES);
+      }
     } else {
-      consecutiveStillSamples = 0; // Reset counter if movement detected
+      Serial.printf("Movement detected: %.2f (threshold: %.2f)\n", dynamicAccel, INACTIVITY_THRESHOLD);
+      consecutiveStillSamples = 0; 
     }
     
-    // If we observe enough consecutive still samples, it's likely a medical emergency
+    
     if (consecutiveStillSamples >= REQUIRED_STILL_SAMPLES) {
-      Serial.println("Prolonged inactivity detected - possible medical emergency");
+      Serial.printf("EMERGENCY CONFIRMED: %d consecutive still samples detected\n", consecutiveStillSamples);
       return true;
     }
     
     delay(10);
   }
   
-  // If we exit the loop without detecting enough stillness, likely not a medical emergency
+  Serial.printf("Inactivity check complete - movement detected (%d still samples, needed %d)\n", 
+               consecutiveStillSamples, REQUIRED_STILL_SAMPLES);
   return false;
 }
 
 void FallDetection::triggerAlarm() {
-  Serial.println("MEDICAL EMERGENCY ALARM ACTIVATED!");
+  Serial.println("\n!!! MEDICAL EMERGENCY ALARM ACTIVATED !!!");
+  Serial.println("Turn on RED LED and alert caregivers");
   
-  
+  // Quick visual feedback with rapid blinks
   for (int i = 0; i < 10; i++) {
     digitalWrite(LED_PIN, HIGH);
     delay(100);
     digitalWrite(LED_PIN, LOW);
     delay(100);
   }
+  
+  
+  digitalWrite(LED_PIN, HIGH);
 }
 
 void FallDetection::cancelAlarm() {
   digitalWrite(LED_PIN, LOW);
   fallDetected = false;
   
-  Serial.println("Alarm canceled");
+  Serial.println("Alarm canceled - returning to normal monitoring");
 }
 
 SystemState FallDetection::getState() {
@@ -107,5 +141,12 @@ SystemState FallDetection::getState() {
 }
 
 void FallDetection::setState(SystemState state) {
+  static const char* stateNames[] = {
+    "INIT", "CALIBRATING", "MONITORING", "FALL_DETECTED", "ALARM_ACTIVE"
+  };
+  
+  Serial.printf("State changing: %s -> %s\n", 
+               stateNames[currentState], stateNames[state]);
+  
   currentState = state;
 }
