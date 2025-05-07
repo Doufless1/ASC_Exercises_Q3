@@ -10,7 +10,7 @@
 #define BUTTON_PIN        15   // Button pin (was GPIO0)
 
 
-#define FREEFALL_THRESHOLD        2.0F   // g-force threshold for free-fall detection
+#define FREEFALL_THRESHOLD        4.0F   // g-force threshold for free-fall detection
 #define IMPACT_THRESHOLD          10.0F   // g-force threshold for impact detection
 #define INACTIVITY_THRESHOLD      1.15F   // g-force threshold for post-fall inactivity
 #define GYRO_THRESHOLD            250.0F // degrees/s threshold for significant rotation
