@@ -4,7 +4,7 @@
 #include <Wire.h>
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
-#include <CircularBuffer.h>
+#include <CircularBuffer.hpp>
 #include "Config.h"
 
 class GyroSensor {

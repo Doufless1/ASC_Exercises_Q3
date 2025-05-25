@@ -3,26 +3,25 @@
 #include "../include/Button.h"
 #include "../include/GyroSensor.h"
 #include "../include/FallDetection.h"
-
+#include "../include/NetworkManager.h"  // Add this line
 
 GyroSensor gyroSensor;
 Button button;
 FallDetection *fallDetection = NULL;
-
+NetworkManager networkManager;  // Add this line
 
 unsigned long lastSampleTime = 0;
 unsigned long lastDebugOutput = 0;
 unsigned long fallTimestamp = 0;
+bool fallReported = false;  // Track if fall has been reported to server
 
 void setup() {
   Serial.begin(115200);
   delay(1000);
   
-
-  
   pinMode(LED_PIN, OUTPUT);
   
-  // visual startup sequence - triple blink
+  // Visual startup sequence - triple blink
   for (int i = 0; i < 3; i++) {
     digitalWrite(LED_PIN, HIGH);
     delay(200);
@@ -33,7 +32,7 @@ void setup() {
   Serial.println("Initializing MPU6050 sensor...");
   if (!gyroSensor.initialize()) {
     Serial.println("Failed to initialize MPU6050!");
-    // error indicator - rapid led blinking
+    // Error indicator - rapid LED blinking
     while (1) {
       digitalWrite(LED_PIN, HIGH);
       delay(100);
@@ -56,6 +55,15 @@ void setup() {
   fallDetection->setState(STATE_MONITORING);
   Serial.println("System ready and monitoring for falls");
   
+  // Initialize WiFi, fetch token, and register device
+  // The initialize() method now handles token fetching and internal registration
+  if (!networkManager.initialize()) { // This line now does everything needed
+    Serial.println("Network initialization failed! Check WiFi and server.");
+    // You might want to add an error indicator here too, like LED blinking
+  }
+  // ---- REMOVE THE LINE BELOW ----
+  // networkManager.registerDeviceInternal(); // THIS LINE WAS CAUSING THE ERROR
+  // ---- END REMOVAL ----
   
   digitalWrite(LED_PIN, HIGH);
   delay(100);
@@ -66,40 +74,41 @@ void loop() {
   if (button.isPressed()) {
     Serial.println("Button pressed");
     
-    // cancel aarm if in alarm state
+    // Cancel alarm if in alarm state
     if (fallDetection->getState() == STATE_FALL_DETECTED || 
         fallDetection->getState() == STATE_ALARM_ACTIVE) {
       fallDetection->cancelAlarm();
       fallDetection->setState(STATE_MONITORING);
       fallTimestamp = 0;
+      fallReported = false;  // Reset fall reported flag
     }
     
     button.clearPressFlag();
   }
   
-  // main state machine
+  // Main state machine
   switch (fallDetection->getState()) {
     case STATE_MONITORING:
-      // sample sensor at regular intervals
+      // Sample sensor at regular intervals
       if (millis() - lastSampleTime >= SAMPLING_PERIOD_MS) {
         lastSampleTime = millis();
         gyroSensor.process();
         
-        // detect falls
+        // Detect falls
         if (fallDetection->detectFall()) {
           Serial.println("POTENTIAL FALL DETECTED - Monitoring for inactivity");
           digitalWrite(LED_PIN, HIGH); 
           fallTimestamp = millis();
           fallDetection->setState(STATE_FALL_DETECTED);
         }
+        
+        // Send regular sensor updates to server
+        float accelMagnitude, gyroMagnitude;
+        gyroSensor.getAccelGyroData(accelMagnitude, gyroMagnitude);
+        networkManager.sendSensorData(accelMagnitude, gyroMagnitude, false);
       }
       
-      // debug output every second
-      /*
-       *Stay responsive: The device must constantly monitor for falls and button presses
-Process data in real-time: We can't afford to pause for debug output
-Manage multiple timing requirements: We have different intervals for sampling, debouncing, etc
-        */
+      // Debug output every second
       if (millis() - lastDebugOutput >= 1000) {
         lastDebugOutput = millis();
         float accelMagnitude, gyroMagnitude;
@@ -114,14 +123,22 @@ Manage multiple timing requirements: We have different intervals for sampling, d
       break;
       
     case STATE_FALL_DETECTED:
-      // check if alarm delay has passed
+      // Check if alarm delay has passed
       if (fallTimestamp > 0 && millis() - fallTimestamp >= ALARM_DELAY_MS) {
-        // check for post-fall inactivity (medical emergency)
+        // Check for post-fall inactivity (medical emergency)
         if (fallDetection->detectInactivityAfterImpact()) {
           fallDetection->triggerAlarm();
           fallDetection->setState(STATE_ALARM_ACTIVE);
+          
+          // Send fall alert to server immediately
+          if (!fallReported) {
+            float accelMagnitude, gyroMagnitude;
+            gyroSensor.getAccelGyroData(accelMagnitude, gyroMagnitude);
+            networkManager.sendSensorData(accelMagnitude, gyroMagnitude, true);
+            fallReported = true;  // Mark as reported
+          }
         } else {
-          // false alarm, return to monitoring
+          // False alarm, return to monitoring
           Serial.println("Movement detected after fall - likely not an emergency");
           fallDetection->cancelAlarm();
           fallDetection->setState(STATE_MONITORING);
@@ -129,12 +146,12 @@ Manage multiple timing requirements: We have different intervals for sampling, d
         }
       }
       
-      // led blink pattern for fall detection
+      // LED blink pattern for fall detection
       digitalWrite(LED_PIN, (millis() % 1000) < 500);
       break;
       
     case STATE_ALARM_ACTIVE:
-      // visual alarm - LED rapid blinking
+      // Visual alarm - LED rapid blinking
       digitalWrite(LED_PIN, (millis() % 300) < 150);
       break;
       
