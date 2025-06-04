@@ -164,26 +164,6 @@ void AudioController::playAudioBuffer() {
     }
 }
 
-void AudioController::playTestSequence() {
-    if (!_initialized) return;
-
-    // C major scale frequencies
-    int frequencies[] = {262, 294, 330, 349, 392, 440, 494, 523};
-    
-    for (int i = 0; i < 8; i++) {
-        playTone(frequencies[i], 0.1f);
-        
-        // Play for 500ms
-        uint32_t start_time = millis();
-        while (millis() - start_time < 100) {
-            update();
-            delay(1);
-        }
-    }
-    
-    stopTone();
-}
-
 void AudioController::playBeep(int frequency_hz, uint32_t duration_ms, float volume) {
     if (!_initialized) return;
     

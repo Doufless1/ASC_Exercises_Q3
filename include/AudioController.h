@@ -27,7 +27,6 @@ public:
     void update();
     
     // Utility functions
-    void playTestSequence();
     void playBeep(int frequency_hz = 1000, uint32_t duration_ms = 200, float volume = 0.1);
     
     // Status
