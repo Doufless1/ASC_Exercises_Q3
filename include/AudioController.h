@@ -1,13 +1,13 @@
 #ifndef AUDIO_CONTROLLER_H
 #define AUDIO_CONTROLLER_H
 
-#include <Arduino.h>
 #include <driver/i2s.h>
+#include "Config.h"
 
 class AudioController {
 public:
     // Constructor with default pins
-    AudioController(int bclk_pin = 26, int lrc_pin = 27, int data_pin = 25);
+    AudioController(int bclk_pin = BCLK_PIN, int lrc_pin = LRC_PIN, int data_pin = DIN_PIN);
     
     // Destructor
     ~AudioController();

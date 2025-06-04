@@ -134,7 +134,7 @@ void loop() {
         if (fallDetection->detectInactivityAfterImpact()) {
           fallDetection->triggerAlarm();
           fallDetection->setState(STATE_ALARM_ACTIVE);
-          speaker.playTone(440, 0.1F); // Sound alarm
+          speaker.playTone(ALARM_SOUND_FREQUENCY_HZ, ALARM_SOUND_VOLUME); // Sound alarm
           
           // Send fall alert to server immediately
           if (!fallReported) {
