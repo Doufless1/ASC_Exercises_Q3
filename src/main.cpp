@@ -4,11 +4,13 @@
 #include "../include/GyroSensor.h"
 #include "../include/FallDetection.h"
 #include "../include/NetworkManager.h"  // Add this line
+#include "AudioController.h"
 
 GyroSensor gyroSensor;
 Button button;
 FallDetection *fallDetection = NULL;
 NetworkManager networkManager;  // Add this line
+AudioController speaker;
 
 unsigned long lastSampleTime = 0;
 unsigned long lastDebugOutput = 0;
@@ -71,6 +73,8 @@ void setup() {
 }
 
 void loop() {
+  speaker.update(); // might need relocation
+
   if (button.isPressed()) {
     Serial.println("Button pressed");
     
@@ -81,6 +85,7 @@ void loop() {
       fallDetection->setState(STATE_MONITORING);
       fallTimestamp = 0;
       fallReported = false;  // Reset fall reported flag
+      speaker.stopTone(); // stop alarm
     }
     
     button.clearPressFlag();
@@ -129,6 +134,7 @@ void loop() {
         if (fallDetection->detectInactivityAfterImpact()) {
           fallDetection->triggerAlarm();
           fallDetection->setState(STATE_ALARM_ACTIVE);
+          speaker.playTone(440, 0.1F); // Sound alarm
           
           // Send fall alert to server immediately
           if (!fallReported) {
