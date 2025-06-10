@@ -129,12 +129,19 @@ void AudioController::update() {
             stopTone();
             return;
         }
+        generateToneBuffer();
+        playAudioBuffer();
     }
     
     // Generate and play audio if needed
-    if (_tone_playing || _beep_playing) {
-        generateToneBuffer();
-        playAudioBuffer();
+    if (_tone_playing) {
+        if ((millis() % 300) < 150) {
+            generateToneBuffer();
+            playAudioBuffer();
+        } else {
+            memset(_audio_buffer, 0, sizeof(_audio_buffer));
+            playAudioBuffer();
+        }
     }
 }
 

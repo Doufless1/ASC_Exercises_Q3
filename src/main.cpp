@@ -92,6 +92,7 @@ void loop() {
       fallTimestamp = 0;
       fallReported = false;  // Reset fall reported flag
       speaker.stopTone(); // stop alarm
+      speaker.playBeep(350, 500, ALARM_SOUND_VOLUME);
     }
     
     button.clearPressFlag();
