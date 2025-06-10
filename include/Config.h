@@ -9,6 +9,10 @@
 #define LED_PIN           2    // Onboard LED
 #define BUTTON_PIN        15   // Button pin (was GPIO0)
 
+// Audio Controller pins
+#define BCLK_PIN          26
+#define LRC_PIN           27
+#define DIN_PIN           25
 
 #define FREEFALL_THRESHOLD        8.0F   // g-force threshold for free-fall detection
 #define IMPACT_THRESHOLD          5.0F   // g-force threshold for impact detection
@@ -19,6 +23,8 @@
 #define ALARM_DELAY_MS            10000  // Delay before full alarm after fall detection
 #define SAMPLING_PERIOD_MS        10     // Sample sensor every 10ms
 #define REQUIRED_STILL_SAMPLES    50     // ~500ms of stillness to confirm emergency
+#define ALARM_SOUND_FREQUENCY_HZ  880    // A5, plays during an emergency
+#define ALARM_SOUND_VOLUME        0.1F   // speaker volume for alarm (0.0F - 1.0F)
 
 
 #define ACCEL_BUFFER_SIZE         (PRE_IMPACT_WINDOW_MS / SAMPLING_PERIOD_MS)

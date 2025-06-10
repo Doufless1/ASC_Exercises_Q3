@@ -4,11 +4,13 @@
 #include "../include/GyroSensor.h"
 #include "../include/FallDetection.h"
 #include "../include/NetworkManager.h"  // Add this line
+#include "AudioController.h"
 
 GyroSensor gyroSensor;
 Button button;
 FallDetection *fallDetection = NULL;
 NetworkManager networkManager;  // Add this line
+AudioController speaker;
 
 unsigned long lastSampleTime = 0;
 unsigned long lastDebugOutput = 0;
@@ -55,6 +57,12 @@ void setup() {
   fallDetection->setState(STATE_MONITORING);
   Serial.println("System ready and monitoring for falls");
   
+  if(speaker.begin()) {
+    Serial.println("Speaker ready!");
+  } else {
+    Serial.println("ERROR setting up speaker!");
+  }
+  
   // Initialize WiFi, fetch token, and register device
   // The initialize() method now handles token fetching and internal registration
   if (!networkManager.initialize()) { // This line now does everything needed
@@ -78,6 +86,8 @@ void setup() {
 }
 
 void loop() {
+  speaker.update(); // might need relocation
+
   if (button.isPressed()) {
     Serial.println("Button pressed");
     
@@ -88,6 +98,8 @@ void loop() {
       fallDetection->setState(STATE_MONITORING);
       fallTimestamp = 0;
       fallReported = false;  // Reset fall reported flag
+      speaker.stopTone(); // stop alarm
+      speaker.playBeep(350, 500, ALARM_SOUND_VOLUME);
     }
     
     button.clearPressFlag();
@@ -136,6 +148,7 @@ void loop() {
         if (fallDetection->detectInactivityAfterImpact()) {
           fallDetection->triggerAlarm();
           fallDetection->setState(STATE_ALARM_ACTIVE);
+          speaker.playTone(ALARM_SOUND_FREQUENCY_HZ, ALARM_SOUND_VOLUME); // Sound alarm
           
           // Send fall alert to server immediately
           if (!fallReported) {
