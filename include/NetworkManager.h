@@ -7,8 +7,8 @@
 #include "Config.h"
 
 // WiFi credentials - update these with your network info
-#define WIFI_SSID "Kosta wifi"
-#define WIFI_PASSWORD "isiegay123"
+#define WIFI_SSID "Homies101"
+#define WIFI_PASSWORD "Onnoisgay123!"
 
 // API endpoints - update with your server address
 #define API_BASE_URL "https://health-monitoring-api-gaajasa6aac0b9dy.canadacentral-01.azurewebsites.net/api"
