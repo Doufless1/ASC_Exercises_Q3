@@ -22,8 +22,8 @@ bool NetworkManager::fetchAuthToken() {
   // Use client for HTTPS connection
   http.begin(*client, GET_TOKEN_ENDPOINT); 
 
-  http.setTimeout(10000);
-  http.setConnectTimeout(5000);
+  http.setTimeout(15000);
+  http.setConnectTimeout(10000);
   
   Serial.print("Fetching auth token from: ");
   Serial.println(GET_TOKEN_ENDPOINT);
@@ -153,6 +153,7 @@ bool NetworkManager::sendSensorData(float accel, float gyro, bool fallDetected) 
 
   HTTPClient http;
   http.begin(*client, API_ENDPOINT);
+  http.setTimeout(15000); // Increase timeout for Azure
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", "Bearer " + authToken);
 
@@ -235,6 +236,7 @@ bool NetworkManager::registerDeviceInternal() {
 
   HTTPClient http;
   http.begin(*client, REGISTER_ENDPOINT);
+  http.setTimeout(15000); // Increase timeout for Azure
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", "Bearer " + authToken);
 
@@ -269,4 +271,69 @@ bool NetworkManager::registerDeviceInternal() {
     delete client;
     return false;
   }
+}
+
+
+
+bool NetworkManager::fetchDeviceConfig() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("FetchDeviceConfig: WiFi not connected.");
+    return false;
+  }
+
+  if (authToken.isEmpty()) {
+    Serial.println("FetchDeviceConfig: Auth token is missing. Attempting to fetch...");
+    if (!fetchAuthToken()) {
+      Serial.println("FetchDeviceConfig: Failed to fetch auth token.");
+      return false;
+    }
+  }
+
+  // Create secure client
+  WiFiClientSecure *client = new WiFiClientSecure;
+  client->setInsecure(); // Accept any certificate
+
+  HTTPClient http;
+  
+  String configUrl = String(GET_DEVICE_CONFIG_ENDPOINT) + DEVICE_ID;
+  Serial.print("Fetching device configuration from: ");
+  Serial.println(configUrl);
+  
+  http.begin(*client, configUrl);
+  http.addHeader("Authorization", "Bearer " + authToken);
+  http.setTimeout(15000); // Increase timeout for Azure
+  
+  int httpResponseCode = http.GET();
+  
+  if (httpResponseCode == 200) {
+    String response = http.getString();
+    Serial.println("Device configuration received:");
+    Serial.println(response);
+    
+    // Parse configuration
+    StaticJsonDocument<1024> configDoc;
+    DeserializationError error = deserializeJson(configDoc, response);
+    
+    if (!error) {
+      // Apply configuration settings
+      // Example: float fallThreshold = configDoc["fallDetectionSensitivity"];
+      http.end();
+      delete client;
+      return true;
+    } else {
+      Serial.print("JSON parsing error: ");
+      Serial.println(error.c_str());
+    }
+  } else {
+    Serial.print("Error fetching configuration. HTTP Code: ");
+    Serial.println(httpResponseCode);
+    if (httpResponseCode > 0) {
+      String response = http.getString();
+      Serial.println(response);
+    }
+  }
+  
+  http.end();
+  delete client;
+  return false;
 }

@@ -45,6 +45,10 @@ bool FallDetection::detectFall() {
   // If not in free-fall, check for free-fall condition
   if (!inFreeFall) {
     if (accelMagnitude < FREEFALL_THRESHOLD) {
+      // maybe remove this part if it needs too much work?
+      if (gyroMagnitude > GYRO_THRESHOLD){
+        Serial.printf("Significant rotation detected: %.2f deg/s\n", gyroMagnitude);
+      }
       inFreeFall = true;
       freeFallStartTime = millis();
       Serial.printf("\n!!! FREE-FALL DETECTED !!! Acceleration: %.2f m/s²\n", accelMagnitude);
@@ -150,3 +154,4 @@ void FallDetection::setState(SystemState state) {
   
   currentState = state;
 }
+

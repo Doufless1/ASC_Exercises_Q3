@@ -61,6 +61,13 @@ void setup() {
     Serial.println("Network initialization failed! Check WiFi and server.");
     // You might want to add an error indicator here too, like LED blinking
   }
+
+
+   if (networkManager.fetchDeviceConfig()) {
+      Serial.println("Device configuration loaded successfully");
+    } else {
+      Serial.println("Using default configuration values");
+    }
   // ---- REMOVE THE LINE BELOW ----
   // networkManager.registerDeviceInternal(); // THIS LINE WAS CAUSING THE ERROR
   // ---- END REMOVAL ----
