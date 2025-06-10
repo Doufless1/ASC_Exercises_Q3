@@ -57,6 +57,12 @@ void setup() {
   fallDetection->setState(STATE_MONITORING);
   Serial.println("System ready and monitoring for falls");
   
+  if(speaker.begin()) {
+    Serial.println("Speaker ready!");
+  } else {
+    Serial.println("ERROR setting up speaker!");
+  }
+  
   // Initialize WiFi, fetch token, and register device
   // The initialize() method now handles token fetching and internal registration
   if (!networkManager.initialize()) { // This line now does everything needed
